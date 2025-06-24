@@ -17,6 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import ProtectedRoute from './components/ProtectedRoute';
 import './i18n';
+import { auth, provider, signInWithPopup } from './firebase';
+import UserProfile from './pages/UserProfile';
+
+
 
 // Debounce utility
 const debounce = (func, delay) => {
@@ -36,6 +40,9 @@ function App() {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const { toggleTheme, theme, setUser, user, logout } = useStore();
   const { t, i18n } = useTranslation();
+ 
+
+  
 
   // Fetch products from API
   useEffect(() => {
@@ -183,6 +190,19 @@ function App() {
     i18n.changeLanguage(i18n.language === 'en' ? 'hi' : 'en');
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      setUser({ name: user.displayName, email: user.email });
+      toast.success('Logged in with Google');
+      setIsLoginOpen(false);
+      setIsSignupOpen(false);
+    } catch (err) {
+      toast.error('Google Sign-In failed');
+    }
+  };
+
   return (
     <HelmetProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -195,9 +215,16 @@ function App() {
           {/* Navbar */}
           <nav className="bg-gray-900 text-white p-4 sticky top-0 z-50 shadow-lg">
             <div className="container mx-auto flex justify-between items-center">
-              <Link to="/" className="text-2xl font-bold">
-                ShopEase
-              </Link>
+              {user ? (
+                <Link to="/profile" className="text-xl font-semibold hover:text-gray-300">
+                  Hi, {user.name || user.email.split('@')[0]}!
+                </Link>
+              ) : (
+                <Link to="/" className="text-2xl font-bold">
+                  ShopEase 
+                </Link>
+              )}
+
               <div className="flex items-center space-x-4">
                 <form onSubmit={handleSearch} className="relative">
                   <input
@@ -268,10 +295,11 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/product/:id" element={<ProductDetails />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+             <Route path="/profile" element={<UserProfile />} />
           </Routes>
 
           {/* Mini Cart */}
@@ -354,12 +382,10 @@ function App() {
                     </button>
                   </>
                 )}
-                <button
-                  type="button"
-                  className="w-full mt-2 bg-gray-800 text-white py-2 rounded hover:bg-gray-900"
-                >
+                <button type="button" onClick={handleGoogleLogin} className="w-full mt-2 bg-gray-800 text-white py-2 rounded hover:bg-gray-900">
                   {t('google_signin')}
                 </button>
+
                 <p className="mt-4 text-center">
                   {t('already_have_account')} <button onClick={() => { setIsSignupOpen(false); setIsLoginOpen(true); }} className="text-blue-600 hover:underline">{t('login')}</button>
                 </p>
@@ -415,12 +441,10 @@ function App() {
                 >
                   {t('login')}
                 </button>
-                <button
-                  type="button"
-                  className="w-full mt-2 bg-gray-800 text-white py-2 rounded hover:bg-gray-900"
-                >
+                <button type="button" onClick={handleGoogleLogin} className="w-full mt-2 bg-gray-800 text-white py-2 rounded hover:bg-gray-900">
                   {t('google_signin')}
                 </button>
+
                 <p className="mt-4 text-center">
                   {t('no_account')} <button onClick={() => { setIsLoginOpen(false); setIsSignupOpen(true); }} className="text-blue-600 hover:underline">{t('signup')}</button>
                 </p>

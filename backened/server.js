@@ -1,9 +1,13 @@
+// server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products'); // Ensure this file exists
 const cors = require('cors');
-require('dotenv').config(); // Load environment variables
+const authRoutes = require('./routes/auth');
+const productRoutes = require('./routes/products');
+const cartRoutes = require('./routes/cart');
+const orderRoutes = require('./routes/order');
+require('dotenv').config();
 
 const app = express();
 
@@ -13,11 +17,12 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', productRoutes); // Mounts /api/products and other product routes
+app.use('/api/products', productRoutes);  // 🛠️ use specific base path
+app.use('/api/cart', cartRoutes);         // 🛠️ use proper base path
+app.use('/api/orders', orderRoutes);      // 🛠️ use proper base path
 
-// Catch-all for undefined routes
+// Fallback route
 app.use((req, res) => {
-  console.log(`404 Error: No route found for ${req.method} ${req.url} from ${req.get('origin') || req.get('referer') || 'unknown'}`);
   res.status(404).json({ message: 'Route not found' });
 });
 
@@ -28,5 +33,6 @@ mongoose.connect('mongodb://localhost:27017/shopease', {
 }).then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
