@@ -8,7 +8,9 @@ import { FiSearch, FiMoon, FiSun, FiMic, FiLogIn, FiUserPlus } from 'react-icons
 import useStore from './store/useStore';
 import Home from './pages/Home';
 import ProductDetails from './pages/ProductDetails';
-import AdminPanel from './pages/AdminPanel';
+import AdminDashboard from './pages/AdminDashboard';
+// import AdminLogin from './pages/AdminLogin';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderHistory from './pages/OrderHistory';
@@ -19,6 +21,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import './i18n';
 import { auth, provider, signInWithPopup } from './firebase';
 import UserProfile from './pages/UserProfile';
+
+import { useNavigate } from "react-router-dom";
+
+function LoginComponent() {
+  const navigate = useNavigate(); // ✅ inside component
+}
 
 
 
@@ -38,11 +46,13 @@ function App() {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const { toggleTheme, theme, setUser, user, logout } = useStore();
+  const { toggleTheme, theme, setUser, user, logout, setAdmin, admin } = useStore();
   const { t, i18n } = useTranslation();
- 
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
-  
+
+
+
 
   // Fetch products from API
   useEffect(() => {
@@ -129,34 +139,56 @@ function App() {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    if (!e.target.checkValidity()) {
-      toast.error('Please fill all required fields.');
-      return;
-    }
+
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginData),
       });
-      console.log('Login fetch response:', response);
       const data = await response.json();
-      console.log('Login Response:', data);
+
       if (response.ok) {
         setUser({ id: data.user.id, email: loginData.email });
-        localStorage.setItem('token', data.token);
-        toast.success(t('login_success'));
-        setLoginData({ email: '', password: '' });
+        localStorage.setItem("token", data.token);
+        toast.success(t("login_success"));
+        setLoginData({ email: "", password: "" });
         setIsLoginOpen(false);
+        navigate("/");
       } else {
-        console.warn('Login failed:', data.message || 'Unknown issue');
         toast.error(data.message);
       }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      toast.error('Server error');
+    } catch (err) {
+      toast.error("Login failed");
     }
   };
+
+ const [adminLoginData, setAdminLoginData] = useState({ email: '', password: '' });
+
+const handleAdminLoginSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch("http://localhost:5001/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(adminLoginData),
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      setAdmin({ email: data.admin.email });
+      localStorage.setItem("adminToken", data.token);
+      toast.success("Admin login successful!");
+      setIsAdminLoginOpen(false);
+    } else {
+      toast.error(data.message || "Admin login failed");
+    }
+  } catch (err) {
+    toast.error("Login failed");
+  }
+};
+
+
 
   const handleLogout = () => {
     logout();
@@ -215,15 +247,20 @@ function App() {
           {/* Navbar */}
           <nav className="bg-gray-900 text-white p-4 sticky top-0 z-50 shadow-lg">
             <div className="container mx-auto flex justify-between items-center">
-              {user ? (
+              {admin ? (
+                <Link to="/admin-dashboard" className="text-xl font-semibold hover:text-gray-300">
+                  Hi Admin!
+                </Link>
+              ) : user ? (
                 <Link to="/profile" className="text-xl font-semibold hover:text-gray-300">
                   Hi, {user.name || user.email.split('@')[0]}!
                 </Link>
               ) : (
                 <Link to="/" className="text-2xl font-bold">
-                  ShopEase 
+                  ShopEase
                 </Link>
               )}
+
 
               <div className="flex items-center space-x-4">
                 <form onSubmit={handleSearch} className="relative">
@@ -241,20 +278,31 @@ function App() {
                     <FiMic />
                   </button>
                 </form>
-                <Link to="/cart" className="hover:text-gray-300">
-                  {t('cart')}
-                </Link>
-                <Link to="/orders" className="hover:text-gray-300">
-                  {t('orders')}
-                </Link>
-                <Link to="/admin" className="hover:text-gray-300">
-                  {t('admin')}
-                </Link>
-                {user ? (
-                  <button onClick={handleLogout} className="hover:text-gray-300 flex items-center">
-                    <FiLogIn className="mr-1" /> {t('logout')}
-                  </button>
-                ) : (
+
+
+
+
+                {user && (
+                  <>
+                    <Link to="/cart" className="hover:text-gray-300">{t('cart')}</Link>
+                    <Link to="/orders" className="hover:text-gray-300">{t('orders')}</Link>
+                    <Link to="/checkout" className="hover:text-gray-300">{t('checkout')}</Link>
+                    <button onClick={handleLogout} className="hover:text-gray-300 flex items-center">
+                      <FiLogIn className="mr-1" /> {t('logout')}
+                    </button>
+                  </>
+                )}
+
+                {admin && (
+                  <>
+                    <Link to="/admin-dashboard" className="hover:text-gray-300">Dashboard</Link>
+                    <button onClick={handleLogout} className="hover:text-gray-300 flex items-center">
+                      <FiLogIn className="mr-1" /> Logout (Admin)
+                    </button>
+                  </>
+                )}
+
+                {!user && !admin && (
                   <>
                     <button onClick={() => setIsLoginOpen(true)} className="hover:text-gray-300 flex items-center">
                       <FiLogIn className="mr-1" /> {t('login')}
@@ -262,8 +310,16 @@ function App() {
                     <button onClick={() => setIsSignupOpen(true)} className="hover:text-gray-300 flex items-center">
                       <FiUserPlus className="mr-1" /> {t('signup')}
                     </button>
+                    <button
+                      onClick={() => setIsAdminLoginOpen(true)}
+                      className="hover:text-gray-300"
+                    >
+                      {t('admin')}
+                    </button>
                   </>
                 )}
+
+
                 <button onClick={toggleTheme} className="hover:text-gray-300">
                   {theme === 'dark' ? <FiSun /> : <FiMoon />}
                 </button>
@@ -298,8 +354,16 @@ function App() {
             <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-             <Route path="/profile" element={<UserProfile />} />
+            {/* <Route path="/admin-login" element={<AdminLogin />} /> */}
+            <Route
+              path="/admin-dashboard"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route path="/profile" element={<UserProfile />} />
           </Routes>
 
           {/* Mini Cart */}
@@ -457,6 +521,60 @@ function App() {
               </button>
             </motion.div>
           </Dialog>
+
+          {/* Admin Login Modal */}
+          <Dialog
+            open={isAdminLoginOpen}
+            onClose={() => setIsAdminLoginOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="bg-white text-gray-900 rounded-lg p-8 w-full max-w-md"
+            >
+              <Dialog.Title className="text-2xl font-bold mb-6 text-center">
+                Admin Login
+              </Dialog.Title>
+              <form onSubmit={handleAdminLoginSubmit}>
+                <div className="mb-4">
+                  <label className="block text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    value={adminLoginData.email}
+                    onChange={(e) => setAdminLoginData({ ...adminLoginData, email: e.target.value })}
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700">Password</label>
+                  <input
+                    type="password"
+                    value={adminLoginData.password}
+                    onChange={(e) => setAdminLoginData({ ...adminLoginData, password: e.target.value })}
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700"
+                >
+                  Login as Admin
+                </button>
+              </form>
+              <button
+                onClick={() => setIsAdminLoginOpen(false)}
+                className="mt-4 text-gray-600 hover:text-gray-800"
+              >
+                Close
+              </button>
+            </motion.div>
+          </Dialog>
+          {/* Admin Protected Route */}
+
 
           {/* Footer */}
           <footer className="bg-gray-900 text-white py-6 mt-10">

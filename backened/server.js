@@ -8,6 +8,9 @@ const productRoutes = require('./routes/products');
 const cartRoutes = require('./routes/cart');
 const orderRoutes = require('./routes/order');
 require('dotenv').config();
+require('dotenv').config({ path: '.env.admin' });
+const adminRoutes = require('./routes/adminAuth');
+
 
 const app = express();
 
@@ -20,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);  // 🛠️ use specific base path
 app.use('/api/cart', cartRoutes);         // 🛠️ use proper base path
 app.use('/api/orders', orderRoutes);      // 🛠️ use proper base path
+app.use('/api/admin', adminRoutes); // 🛠️ use specific base path for admin routes
 
 // Fallback route
 app.use((req, res) => {
